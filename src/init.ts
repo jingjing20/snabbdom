@@ -16,6 +16,7 @@ type VNodeQueue = VNode[];
 
 const emptyNode = vnode("", {}, [], undefined, undefined);
 
+// 判断是否是同一个 vnode 节点
 function sameVnode(vnode1: VNode, vnode2: VNode): boolean {
   const isSameKey = vnode1.key === vnode2.key;
   const isSameIs = vnode1.data?.is === vnode2.data?.is;
@@ -35,6 +36,7 @@ function documentFragmentIsNotSupported(): never {
   throw new Error("The document fragment is not supported on this platform.");
 }
 
+// 判断是否是 dom 元素节点
 function isElement(
   api: DOMAPI,
   vnode: Element | DocumentFragment | VNode
@@ -102,8 +104,10 @@ export function init(
     post: [],
   };
 
-  const api: DOMAPI = domApi !== undefined ? domApi : htmlDomApi;
+  const api: DOMAPI = domApi !== undefined ? domApi : htmlDomApi; // 可配置转换成啥平台的虚拟 Dom 默认是使用浏览器的 htmlDomApi
 
+  // 把传入的所有模块的钩子方法，统一存储到 cbs 对象中
+  // 最终构建的 cbs 对象的形式 cbs = [ create: [fn1, fn2], update: [], ... ]
   for (const hook of hooks) {
     for (const module of modules) {
       const currentHook = module[hook];
@@ -430,16 +434,23 @@ export function init(
     vnode: VNode
   ): VNode {
     let i: number, elm: Node, parent: Node;
+
+    // 保存新插入节点的队列，为了触发钩子函数
     const insertedVnodeQueue: VNodeQueue = [];
+
+    // 执行模块的 pre 钩子函数
     for (i = 0; i < cbs.pre.length; ++i) cbs.pre[i]();
 
+    // 判断是否是 Dom 元素节点
     if (isElement(api, oldVnode)) {
       oldVnode = emptyNodeAt(oldVnode);
     } else if (isDocumentFragment(api, oldVnode)) {
       oldVnode = emptyDocumentFragmentAt(oldVnode);
     }
 
+    // 判断是否是同一个 vnode 节点
     if (sameVnode(oldVnode, vnode)) {
+      // 找到节点的差异并更新 Dom
       patchVnode(oldVnode, vnode, insertedVnodeQueue);
     } else {
       elm = oldVnode.elm!;
