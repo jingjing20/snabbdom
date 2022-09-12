@@ -296,6 +296,7 @@ export function init(
     newCh: VNode[],
     insertedVnodeQueue: VNodeQueue
   ) {
+    // 定义所有的变量
     let oldStartIdx = 0;
     let newStartIdx = 0;
     let oldEndIdx = oldCh.length - 1;
@@ -309,8 +310,10 @@ export function init(
     let elmToMove: VNode;
     let before: any;
 
+    // 循环里面进行同级别的节点比较
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
       if (oldStartVnode == null) {
+        // 节点为空移动索引
         oldStartVnode = oldCh[++oldStartIdx]; // Vnode might have been moved left
       } else if (oldEndVnode == null) {
         oldEndVnode = oldCh[--oldEndIdx];
@@ -318,14 +321,17 @@ export function init(
         newStartVnode = newCh[++newStartIdx];
       } else if (newEndVnode == null) {
         newEndVnode = newCh[--newEndIdx];
+        // 1. 比较老开始节点和新的开始节点
       } else if (sameVnode(oldStartVnode, newStartVnode)) {
         patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue);
         oldStartVnode = oldCh[++oldStartIdx];
         newStartVnode = newCh[++newStartIdx];
+        // 2. 比较老结束节点和新的结束节点
       } else if (sameVnode(oldEndVnode, newEndVnode)) {
         patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue);
         oldEndVnode = oldCh[--oldEndIdx];
         newEndVnode = newCh[--newEndIdx];
+        // 3. 比较老开始节点和新的结束节点
       } else if (sameVnode(oldStartVnode, newEndVnode)) {
         // Vnode moved right
         patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue);
@@ -336,6 +342,7 @@ export function init(
         );
         oldStartVnode = oldCh[++oldStartIdx];
         newEndVnode = newCh[--newEndIdx];
+        // 4. 比较老结束节点和新的开始节点
       } else if (sameVnode(oldEndVnode, newStartVnode)) {
         // Vnode moved left
         patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue);
@@ -343,31 +350,36 @@ export function init(
         oldEndVnode = oldCh[--oldEndIdx];
         newStartVnode = newCh[++newStartIdx];
       } else {
+        // 开始节点和结束节点都不相同
         if (oldKeyToIdx === undefined) {
-          oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx);
+          oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx); //创建一个老节点 节点 key 和节点 index 相对应的 Map 结构
         }
-        idxInOld = oldKeyToIdx[newStartVnode.key as string];
+        idxInOld = oldKeyToIdx[newStartVnode.key as string]; //用新节点的 key 去生成的 Map 结构里面查找对应的节点
         if (isUndef(idxInOld)) {
-          // New element
+          //如果在老节点生成的 Map 结构中没有查找到对应的节点 即此节点为新节点 则调用 createElm 函数生成新 dom 元素后 用 insertBefore 插入到 Dom 树中
           api.insertBefore(
             parentElm,
             createElm(newStartVnode, insertedVnodeQueue),
             oldStartVnode.elm!
           );
         } else {
-          elmToMove = oldCh[idxInOld];
+          elmToMove = oldCh[idxInOld]; //如果在老节点生成的 Map 结构中查找到了对应的 index 则去老节点数组中取出对应的节点（elmToMove）
           if (elmToMove.sel !== newStartVnode.sel) {
+            // 如果新旧节点的选择器不同 则调用 createElm 函数生成新 dom 元素后 用 insertBefore 插入到 Dom 树中
             api.insertBefore(
               parentElm,
               createElm(newStartVnode, insertedVnodeQueue),
               oldStartVnode.elm!
             );
           } else {
+            // 若选择器相同 则调用 patchVnode 对比更新节点
             patchVnode(elmToMove, newStartVnode, insertedVnodeQueue);
             oldCh[idxInOld] = undefined as any;
+            // 将更新后的节点移动到左边
             api.insertBefore(parentElm, elmToMove.elm!, oldStartVnode.elm!);
           }
         }
+        // 重新给 newStartVnode 赋值，指向下一个新节点
         newStartVnode = newCh[++newStartIdx];
       }
     }
@@ -393,6 +405,7 @@ export function init(
     vnode: VNode,
     insertedVnodeQueue: VNodeQueue
   ) {
+    // 第一个过程：首先执行用户设置的 prepatch 和 update 钩子函数
     const hook = vnode.data?.hook;
     hook?.prepatch?.(oldVnode, vnode);
     const elm = (vnode.elm = oldVnode.elm)!;
@@ -407,6 +420,8 @@ export function init(
         cbs.update[i](oldVnode, vnode);
       vnode.data?.hook?.update?.(oldVnode, vnode);
     }
+
+    // 第二个过程：真正对比新旧 vnode 差异的地方
     const oldCh = oldVnode.children as VNode[];
     const ch = vnode.children as VNode[];
     if (isUndef(vnode.text)) {
@@ -426,6 +441,8 @@ export function init(
       }
       api.setTextContent(elm, vnode.text!);
     }
+
+    // 第三个过程：最后执行用户设置的 postpatch 钩子函数
     hook?.postpatch?.(oldVnode, vnode);
   }
 
